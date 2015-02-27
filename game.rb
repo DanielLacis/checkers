@@ -1,4 +1,50 @@
-require_relative './piece'
 require_relative './board'
 require_relative './player'
+
 require 'colorize'
+class Game
+  attr_reader :game_board, :players, :turn
+  def initialize
+    @game_board = Board.new
+    @players = { red: HumanPlayer.new(:red), black: HumanPlayer.new(:black) }
+    @turn = :red
+  end
+
+  def play
+    until won?
+      game_board.display
+      begin
+        start_pos, end_pos = players[turn].get_move
+        send_move(start_pos, end_pos, turn)
+      rescue PieceError => e
+        game_board.display
+        puts e
+        retry
+      end
+      swap_turn
+    end
+    game_board.display
+    puts "The #{other_turn} player has won the game!"
+
+  end
+
+  def send_move(start_pos, end_pos, turn)
+    raise PieceError.new("piece not present") if game_board[start_pos].nil?
+    if game_board[start_pos].color != turn
+      raise PieceError.new("wrong color piece")
+    end
+    game_board[start_pos].make_move(end_pos)
+  end
+
+  def won?
+    return true if game_board.color_pieces(turn).length == 0
+  end
+
+  def swap_turn
+    @turn = other_turn
+  end
+
+  def other_turn
+    (@turn == :red ? :black : :red)
+  end
+end

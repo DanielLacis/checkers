@@ -1,5 +1,6 @@
 class Piece
-  attr_reader :board, :position, :kinged, :move_dirs, :color, :symbol
+  # move_dirs, jump_dirs ==> methods & CONSTANTS
+  attr_reader :board, :position, :kinged, :move_dirs, :color, :symbol # SO MANY ATTRIBUTES
   def self.sum_pos(pos, delta)
     [pos[0] + delta[0], pos[1] + delta[1]]
   end
@@ -12,7 +13,6 @@ class Piece
     @color = options[:color] # red gets bottom
     @board = options[:board]
     set_move_dirs(options[:move_dirs])
-    set_jump_dirs(options[:jump_dirs])
     set_symbol
   end
 
@@ -24,28 +24,68 @@ class Piece
     end
   end
 
-  def set_jump_dirs(options_jump_dirs)
-    if options_jump_dirs.empty?
-      @jump_dirs = (color == :red ? [[-2, -2], [-2, 2]] : [[2, 2], [2, -2]])
-    else
-      @jump_dirs = options_jump_dirs
-    end
-  end
-
   def kinged?
     @kinged
   end
 
-  def perform_slide(end_pos)
-    if validate_slide(end_pos)
-      board[end_pos] = self
-      board[position] = nil
-      @position = end_pos
-      check_king
-      return true
+  def make_move(end_pos)
+    if possible_slides.include?(end_pos)
+      perform_slide(end_pos)
+    elsif possible_jumps.include?(end_pos)
+      perform_jump(end_pos)
+    else
+      raise PieceError.new("The chosen piece cannot make this move")
     end
+    true
+  end
+
+  def perform_slide(end_pos)
+    unless validate_slide(end_pos)
+      raise PieceError.new("This slide is not valid")
+    end
+    execute_slide(end_pos)
 
     false # would already return this when if evaluates false
+  end
+
+  def perform_jump(end_pos)
+    dir = determine_dir(end_pos)
+
+    unless dir
+      raise PieceError.new("this jump is not valid (dir error)")
+    end
+    unless validate_jump(end_pos, dir)
+      raise PieceError.new("This jump is not valid")
+    end
+    return execute_jump(end_pos, dir)
+
+    false # would already return this when if evaluates false
+  end
+
+  def execute_slide(end_pos)
+    board[end_pos] = self
+    board[position] = nil
+    @position = end_pos
+    check_king
+    true
+  end
+
+  def execute_jump(end_pos, dir)
+    jumped_over_pos = Piece.sum_pos(position, dir)
+    board[end_pos] = self
+    board[jumped_over_pos] = nil
+    board[position] = nil
+    @position = end_pos
+    check_king
+    true
+  end
+
+  def determine_dir(end_pos)
+    move_dirs.each do |dir|
+      return dir if Piece.sum_pos(Piece.sum_pos(position, dir), dir) == end_pos
+    end
+
+    false
   end
 
   def possible_slides
@@ -53,7 +93,7 @@ class Piece
   end
 
   def possible_jumps
-    jump_dirs.map { |dir| Piece.sum_pos(position, dir) }
+    move_dirs.map { |dir| Piece.sum_pos(Piece.sum_pos(position, dir), dir) }
   end
 
 
@@ -62,22 +102,47 @@ class Piece
       if position[0] == 0 || position[0] == 7 # first/last row of board
         @kinged = true
         @move_dirs += (color == :red ? [[1, 1], [1, -1]] : [[-1, -1], [-1, 1]])
-        @jump_dirs += (color == :red ? [[2, 2], [2, -2]] : [[-2, -2], [-2, 2]])
+        king_symbol
       end
     end
   end
 
   def validate_slide(end_pos)
-    return true if board[end_pos].empty? && possible_slides.include?(end_pos)
+    return false unless end_pos[0].between?(0,7) && end_pos[1].between?(0,7)
+    return true if board[end_pos].nil? && possible_slides.include?(end_pos)
     false
+  end
+
+  def validate_jump(end_pos, dir)
+    return false unless end_pos[0].between?(0,7) && end_pos[1].between?(0,7)
+    intermediate_pos = Piece.sum_pos(position, dir)
+    return true if jump_between_occupied?(intermediate_pos) &&
+                   jump_end_empty?(end_pos)
+
+    false
+  end
+
+  def jump_end_empty?(end_pos)
+    board[end_pos].nil? && possible_jumps.include?(end_pos)
+  end
+
+  def jump_between_occupied?(intermediate_pos)
+    board[intermediate_pos].is_a?(Piece) && board[intermediate_pos].color != color
   end
 
   def set_symbol
     if color == :red
-      # @symbol = "#{["26C4".hex].pack("U")} ".colorize(:red)
-      @symbol = ["26C4".hex].pack("U").colorize(:red)
+      @symbol = "⛄" # coffee
     else
-      @symbol = ["2693".hex].pack("U").colorize(:black)
+      @symbol = "☕" # snowman
+    end
+  end
+
+  def king_symbol
+    if color == :red
+      @symbol = "⛅" # snowman
+    else
+      @symbol = "☢".colorize(:yellow) # coffee
     end
   end
 end
