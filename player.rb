@@ -10,14 +10,14 @@ class HumanPlayer
   def get_move
     begin
       puts "enter move sequence: "
-      start_str = gets.chomp # split(/[, ]+/)
+      start_str = gets.chomp
       moves = validate_input(start_str)
     rescue ParsingError => e
       puts e
       retry
     end
 
-    moves.map { |str| string_convert(str) } # (&:string_convert)
+    moves.map { |str| string_convert(str) }
   end
 
   def validate_input(parse_str)

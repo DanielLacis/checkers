@@ -3,7 +3,7 @@ class Piece
   BLACK_MOVE_DIRS = [[1, 1], [1, -1]]
   KING_MOVE_DIRS = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
   attr_reader :position, :kinged, :color, :symbol
-  attr_accessor :board
+  attr_accessor :board, :slid_this_turn, :jumped_this_turn
   def self.sum_pos(pos, delta)
     [pos[0] + delta[0], pos[1] + delta[1]]
   end
@@ -15,6 +15,8 @@ class Piece
     @position = options[:position] # [row, col]
     @color = options[:color] # red gets bottom
     @board = options[:board]
+    @moved_this_turn = false
+    @jumped_this_turn = false
     set_symbol
   end
 
@@ -23,21 +25,23 @@ class Piece
   end
 
   def perform_moves!(move_sequence, flag = true)
+    ref = board[move_sequence.first]
     if flag && valid_move_seq?(move_sequence.dup)
-      while move_sequence.length > 1
-        start_pos = move_sequence.shift
-        end_pos = move_sequence.first
-        board[start_pos].make_move(end_pos)
-      end
+      execute_moves(move_sequence)
     else
-      while move_sequence.length > 1
-        start_pos = move_sequence.shift
-        end_pos = move_sequence.first
-        board[start_pos].make_move(end_pos)
-      end
+      execute_moves(move_sequence)
     end
-
+    ref.slid_this_turn = false
+    ref.jumped_this_turn = false
     true
+  end
+
+  def execute_moves(move_sequence)
+    while move_sequence.length > 1
+      start_pos = move_sequence.shift
+      end_pos = move_sequence.first
+      board[start_pos].make_move(end_pos)
+    end
   end
 
   def valid_move_seq?(move_sequence)
@@ -88,6 +92,7 @@ class Piece
     board[position] = nil
     @position = end_pos
     check_king
+    @slid_this_turn = true
     true
   end
 
@@ -98,6 +103,7 @@ class Piece
     board[position] = nil
     @position = end_pos
     check_king
+    @jumped_this_turn = true
     true
   end
 
@@ -128,12 +134,16 @@ class Piece
   end
 
   def validate_slide(end_pos)
+    if @slid_this_turn || @jumped_this_turn
+      raise PieceError.new("cannot slide after moving")
+    end
     return false unless end_pos[0].between?(0,7) && end_pos[1].between?(0,7)
     return true if board[end_pos].nil? && possible_slides.include?(end_pos)
     false
   end
 
   def validate_jump(end_pos, dir)
+    raise PieceError.new("cannot jump after sliding") if @slid_this_turn
     return false unless end_pos[0].between?(0,7) && end_pos[1].between?(0,7)
     between_pos = Piece.sum_pos(position, dir)
     return true if jump_between_occupied?(between_pos) &&
