@@ -1,27 +1,20 @@
 class Piece
-  # move_dirs, jump_dirs ==> methods & CONSTANTS
-  attr_reader :board, :position, :kinged, :move_dirs, :color, :symbol # SO MANY ATTRIBUTES
+  RED_MOVE_DIRS = [[-1, -1], [-1, 1]]
+  BLACK_MOVE_DIRS = [[1, 1], [1, -1]]
+  KING_MOVE_DIRS = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
+  attr_reader :board, :position, :kinged, :color, :symbol
   def self.sum_pos(pos, delta)
     [pos[0] + delta[0], pos[1] + delta[1]]
   end
 
   def initialize(options = {})
-    defaults = { position: nil, kinged: false, color: nil, move_dirs: [], board: nil, jump_dirs: [] }
+    defaults = { position: nil, kinged: false, color: nil, board: nil, jump_dirs: [] }
     options = defaults.merge(options)
     @kinged = options[:kinged]
     @position = options[:position] # [row, col]
     @color = options[:color] # red gets bottom
     @board = options[:board]
-    set_move_dirs(options[:move_dirs])
     set_symbol
-  end
-
-  def set_move_dirs(options_move_dirs)
-    if options_move_dirs.empty?
-      @move_dirs = (color == :red ? [[-1, -1], [-1, 1]] : [[1, 1], [1, -1]])
-    else
-      @move_dirs = options_move_dirs
-    end
   end
 
   def kinged?
@@ -101,7 +94,6 @@ class Piece
     unless kinged
       if position[0] == 0 || position[0] == 7 # first/last row of board
         @kinged = true
-        @move_dirs += (color == :red ? [[1, 1], [1, -1]] : [[-1, -1], [-1, 1]])
         king_symbol
       end
     end
@@ -130,6 +122,11 @@ class Piece
     board[intermediate_pos].is_a?(Piece) && board[intermediate_pos].color != color
   end
 
+  def move_dirs
+    return KING_MOVE_DIRS if kinged?
+    color == :red ? RED_MOVE_DIRS : BLACK_MOVE_DIRS
+  end
+
   def set_symbol
     if color == :red
       @symbol = "⛄" # coffee
@@ -140,7 +137,7 @@ class Piece
 
   def king_symbol
     if color == :red
-      @symbol = "⛅" # snowman
+      @symbol = "⛅" # sun and clouds
     else
       @symbol = "☢".colorize(:yellow) # coffee
     end

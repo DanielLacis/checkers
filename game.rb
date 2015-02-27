@@ -13,19 +13,25 @@ class Game
   def play
     until won?
       game_board.display
-      begin
-        start_pos, end_pos = players[turn].get_move
-        send_move(start_pos, end_pos, turn)
-      rescue PieceError => e
-        game_board.display
-        puts e
-        retry
-      end
+      take_turn
       swap_turn
     end
     game_board.display
     puts "The #{other_turn} player has won the game!"
 
+  end
+
+  def take_turn
+    begin
+      start_pos, end_pos = players[turn].get_move
+      send_move(start_pos, end_pos, turn)
+    rescue PieceError => e
+      game_board.display
+      puts e
+      retry
+    end
+
+    true
   end
 
   def send_move(start_pos, end_pos, turn)
