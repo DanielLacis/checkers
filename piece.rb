@@ -2,13 +2,14 @@ class Piece
   RED_MOVE_DIRS = [[-1, -1], [-1, 1]]
   BLACK_MOVE_DIRS = [[1, 1], [1, -1]]
   KING_MOVE_DIRS = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
-  attr_reader :board, :position, :kinged, :color, :symbol
+  attr_reader :position, :kinged, :color, :symbol
+  attr_accessor :board
   def self.sum_pos(pos, delta)
     [pos[0] + delta[0], pos[1] + delta[1]]
   end
 
   def initialize(options = {})
-    defaults = { position: nil, kinged: false, color: nil, board: nil, jump_dirs: [] }
+    defaults = { position: nil, kinged: false, color: nil, board: nil }
     options = defaults.merge(options)
     @kinged = options[:kinged]
     @position = options[:position] # [row, col]
@@ -19,6 +20,31 @@ class Piece
 
   def kinged?
     @kinged
+  end
+
+  def perform_moves!(move_sequence, flag = true)
+    if flag && valid_move_seq?(move_sequence.dup)
+      while move_sequence.length > 1
+        start_pos = move_sequence.shift
+        end_pos = move_sequence.first
+        board[start_pos].make_move(end_pos)
+      end
+    else
+      while move_sequence.length > 1
+        start_pos = move_sequence.shift
+        end_pos = move_sequence.first
+        board[start_pos].make_move(end_pos)
+      end
+    end
+
+    true
+  end
+
+  def valid_move_seq?(move_sequence)
+    new_board = board.dup
+    start_pos = move_sequence[0].dup
+    new_board[start_pos].perform_moves!(move_sequence, false)
+    true
   end
 
   def make_move(end_pos)
@@ -43,7 +69,9 @@ class Piece
 
   def perform_jump(end_pos)
     dir = determine_dir(end_pos)
-
+    puts "dir and end_pos"
+    p dir
+    p end_pos
     unless dir
       raise PieceError.new("this jump is not valid (dir error)")
     end
@@ -94,7 +122,7 @@ class Piece
     unless kinged
       if position[0] == 0 || position[0] == 7 # first/last row of board
         @kinged = true
-        king_symbol
+        set_symbol
       end
     end
   end
@@ -107,8 +135,8 @@ class Piece
 
   def validate_jump(end_pos, dir)
     return false unless end_pos[0].between?(0,7) && end_pos[1].between?(0,7)
-    intermediate_pos = Piece.sum_pos(position, dir)
-    return true if jump_between_occupied?(intermediate_pos) &&
+    between_pos = Piece.sum_pos(position, dir)
+    return true if jump_between_occupied?(between_pos) &&
                    jump_end_empty?(end_pos)
 
     false
@@ -118,8 +146,8 @@ class Piece
     board[end_pos].nil? && possible_jumps.include?(end_pos)
   end
 
-  def jump_between_occupied?(intermediate_pos)
-    board[intermediate_pos].is_a?(Piece) && board[intermediate_pos].color != color
+  def jump_between_occupied?(between_pos)
+    board[between_pos].is_a?(Piece) && board[between_pos].color != color
   end
 
   def move_dirs
@@ -128,7 +156,9 @@ class Piece
   end
 
   def set_symbol
-    if color == :red
+    if kinged
+      king_symbol
+    elsif color == :red
       @symbol = "⛄" # coffee
     else
       @symbol = "☕" # snowman
@@ -141,5 +171,10 @@ class Piece
     else
       @symbol = "☢".colorize(:yellow) # coffee
     end
+  end
+
+  def dup
+    Piece.new({ position: position.dup, kinged: kinged,
+                color: color, board: nil })
   end
 end

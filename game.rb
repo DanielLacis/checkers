@@ -23,8 +23,8 @@ class Game
 
   def take_turn
     begin
-      start_pos, end_pos = players[turn].get_move
-      send_move(start_pos, end_pos, turn)
+      move_sequence = players[turn].get_move
+      send_move(move_sequence, turn)
     rescue PieceError => e
       game_board.display
       puts e
@@ -34,12 +34,13 @@ class Game
     true
   end
 
-  def send_move(start_pos, end_pos, turn)
+  def send_move(move_sequence, turn)
+    start_pos = move_sequence.first
     raise PieceError.new("piece not present") if game_board[start_pos].nil?
     if game_board[start_pos].color != turn
       raise PieceError.new("wrong color piece")
     end
-    game_board[start_pos].make_move(end_pos)
+    game_board[start_pos].perform_moves!(move_sequence)
   end
 
   def won?

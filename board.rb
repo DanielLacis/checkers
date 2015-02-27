@@ -1,13 +1,14 @@
 require_relative './piece'
+require 'byebug'
 
 class Board
   ROW_NUMBERS = (1..8).to_a.reverse
   COLUMN_LETTERS = ("a".."h").to_a
   attr_reader :board, :row_numbers, :column_letters
 
-  def initialize
+  def initialize(populate = true)
     generate_board
-    populate_board
+    populate_board if populate
   end
 
   def generate_board
@@ -97,10 +98,20 @@ class Board
     board.flatten.compact.select { |piece| piece.color == color }
   end
 
-
-
+  def pieces
+    board.flatten.compact
+  end
 
   def display
     puts render
+  end
+
+  def dup
+    new_board = Board.new(false)
+    pieces.each do |piece|
+      new_board[piece.position] = piece.dup
+      new_board[piece.position].board = new_board
+    end
+    new_board
   end
 end
